@@ -10,10 +10,9 @@ import java.util.ArrayList;
 import java.util.List;
 
 import vo.AuthorVo;
+import vo.BookVo;
 
-//함수이름들은 CURD 기능에 맞도록 작성
-public class AuthorDao {
-
+public class BookDao {
 	private Connection getConnection() throws SQLException {
 
 		Connection conn = null;
@@ -32,23 +31,26 @@ public class AuthorDao {
 		return conn;
 	}
 
-	public boolean insert(AuthorVo authorVo) {
+	public boolean insert(BookVo bookVo) {
 		Connection conn = null;
 		PreparedStatement pstmt = null;
 		try {
 			conn = getConnection();
 			// 3. be ready statement 쿼리를 날리지 않고 default값으로 준비 시켜 놓는다.
-			String sql = "insert into author values(null,?,?)";
+			
+			String temp = "(select no from author where no=1)";
+			String sql = "insert into book values(null,?,?,"+temp+")";
 			pstmt = conn.prepareStatement(sql);
 
 			// 5. binding
-			pstmt.setString(1, authorVo.getName());
-			pstmt.setString(2, authorVo.getBio());
+			pstmt.setString(1, bookVo.getTitle());
+			pstmt.setLong(2, bookVo.getPrice());
+			//pstmt.setLong(3, bookVo.getAuthorNo());
 
 			// 4. run SQL query문은 pstmt 객체 안에 있기때문에 다시 sql문을 주지 않는다.
 			int count = pstmt.executeUpdate();
-
 			return count == 1;
+
 		} catch (SQLException e) {
 			System.out.println("error" + e);
 			return false;
@@ -67,13 +69,13 @@ public class AuthorDao {
 		}
 	}
 
-	public List<AuthorVo> getList() {
-		List list = new ArrayList<AuthorVo>();
+	public List<BookVo> getList() {
+		List list = new ArrayList<BookVo>();
 
 		ResultSet rs = null;
 		Connection conn = null;
 		Statement stmt = null;
-		
+
 		try {
 
 			conn = getConnection();
@@ -82,22 +84,24 @@ public class AuthorDao {
 			stmt = conn.createStatement();
 
 			// 4. run SQL
-			String sql = "select no, name, bio from author";
+			String sql = "select no,title,price,author_no from book";
 			rs = stmt.executeQuery(sql); // select 쿼리는 excuteQuery, 나머지 쿼리는
 											// updateQuery
 
 			// 5. fetch row( row한개씩 가져오기)
 			while (rs.next()) {
 				Long no = rs.getLong(1);
-				String name = rs.getString(2);
-				String bio = rs.getString(3);
+				String title = rs.getString(2);
+				Long price = rs.getLong(3);
+				Long authorNo = rs.getLong(4);
 
-				AuthorVo authorVo = new AuthorVo();
-				authorVo.setNo(no);
-				authorVo.setName(name);
-				authorVo.setBio(bio);
-				
-				list.add(authorVo);
+				BookVo bookVo = new BookVo();
+				bookVo.setNo(no);
+				bookVo.setTitle(title);
+				bookVo.setPrice(price);
+				bookVo.setAuthorNo(authorNo);
+
+				list.add(bookVo);
 			}
 			return list;
 		} catch (SQLException e) {
@@ -122,34 +126,35 @@ public class AuthorDao {
 
 	}
 
-	public AuthorVo get(Long no) {
+	public BookVo get(Long no) {
 		Connection conn = null;
 		PreparedStatement pstmt = null;
-		ResultSet rs= null;
-		AuthorVo authorVo = null;
+		ResultSet rs = null;
+		BookVo bookVo = null;
 		try {
 			conn = getConnection();
 			// 3. be ready statement 쿼리를 날리지 않고 default값으로 준비 시켜 놓는다.
-			String sql = "select no,name,bio from author where no=?";
+			String sql = "select no, title, price, author_no from author where no=?";
 			pstmt = conn.prepareStatement(sql);
 
 			// 4. binding
 			pstmt.setLong(1, no);
-			
-			rs=pstmt.executeQuery();
-			
-			if(rs.next()){
-				authorVo = new AuthorVo();
-				
-				authorVo.setNo(rs.getLong(1));
-				authorVo.setName(rs.getString(2));
-				authorVo.setBio(rs.getString(3));
+
+			rs = pstmt.executeQuery();
+
+			if (rs.next()) {
+				bookVo = new BookVo();
+
+				bookVo.setNo(rs.getLong(1));
+				bookVo.setTitle(rs.getString(2));
+				bookVo.setPrice(rs.getLong(3));
+				bookVo.setAuthorNo(rs.getLong(4));
 			}
 
-			return authorVo;
+			return bookVo;
 		} catch (SQLException e) {
 			System.out.println("error" + e);
-			return authorVo;
+			return bookVo;
 		} finally {
 			/* 자원정리 */
 			try { // open의 반대순으로 정리
@@ -163,30 +168,30 @@ public class AuthorDao {
 				e.printStackTrace();
 			}
 		}
-		
+
 	}
 
-	public AuthorVo get(String name) {
+	public BookVo get(String name) {
 		return null;
 	}
 
 	public boolean delete(Long no) {
 		Connection conn = null;
 		PreparedStatement pstmt = null;
-		ResultSet rs= null;
-		AuthorVo authorVo = null;
+		ResultSet rs = null;
+		BookVo bookVo = null;
 		try {
 			conn = getConnection();
 			// 3. be ready statement 쿼리를 날리지 않고 default값으로 준비 시켜 놓는다.
-			String sql = "delete from author where no=?";
+			String sql = "delete from book where no=?";
 			pstmt = conn.prepareStatement(sql);
 
 			// 4. binding
 			pstmt.setLong(1, no);
-			
-			int count =pstmt.executeUpdate();
-			return (count==1);
-			
+
+			int count = pstmt.executeUpdate();
+			return (count == 1);
+
 		} catch (SQLException e) {
 			System.out.println("error" + e);
 			return false;
@@ -205,24 +210,25 @@ public class AuthorDao {
 		}
 	}
 
-	public boolean update(AuthorVo authorVo) {
+	public boolean update(BookVo bookVo) {
 		Connection conn = null;
 		PreparedStatement pstmt = null;
 
 		try {
 			conn = getConnection();
 			// 3. be ready statement 쿼리를 날리지 않고 default값으로 준비 시켜 놓는다.
-			String sql = "update author set name =?, bio=? where no=?";
+			String sql = "update book set no=?, title =?, price=?, authorNo=? where no=?";
 			pstmt = conn.prepareStatement(sql);
 
-			pstmt.setString(1, authorVo.getName());
-			pstmt.setString(2, authorVo.getBio());
-			pstmt.setLong(3, authorVo.getNo());
+			pstmt.setLong(1, bookVo.getNo());
+			pstmt.setString(2, bookVo.getTitle());
+			pstmt.setLong(3, bookVo.getPrice());
+			pstmt.setLong(4, bookVo.getAuthorNo());
 
 			int count = pstmt.executeUpdate();
-			
-			return (count==1);
-			
+
+			return (count == 1);
+
 		} catch (SQLException e) {
 			System.out.println("error" + e);
 			return false;
@@ -239,6 +245,6 @@ public class AuthorDao {
 				e.printStackTrace();
 			}
 		}
-		
+
 	}
 }
